@@ -77,7 +77,8 @@ button {
 .toolbar-toggle {
   position: absolute;
   top: 18px;
-  right: 330px;
+  right: auto;
+  left: 330px;
   z-index: 4;
   justify-content: center;
   width: 28px;
@@ -90,14 +91,16 @@ button {
 }
 
 .studio.is-toolbar-hidden .toolbar-toggle {
-  right: 18px;
+  right: auto;
+  left: 18px;
 }
 
 .toolbar {
   position: absolute;
   top: 18px;
-  right: 18px;
+  right: auto;
   bottom: 18px;
+  left: 18px;
   z-index: 3;
   width: min(294px, calc(100vw - 36px));
   min-height: 0;
@@ -110,7 +113,15 @@ button {
 }
 
 .toolbar-title {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: flex-start;
+  min-height: 52px;
+  padding-bottom: 12px;
+}
+
+.toolbar-title > :first-child {
+  min-width: 0;
 }
 
 .toolbar-title .gc-panel-title,
@@ -120,11 +131,14 @@ button {
 
 .toolbar-title .gc-panel-meta {
   margin-top: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .toolbar-actions {
   display: flex;
-  flex-direction: column;
+  align-self: start;
   flex: 0 0 auto;
   gap: 6px;
 }
@@ -246,8 +260,9 @@ button {
 
 .play-hud {
   position: absolute;
-  left: 18px;
+  right: 18px;
   bottom: 18px;
+  left: auto;
   z-index: 4;
   display: grid;
   grid-template-columns: 44px minmax(0, 1fr);
@@ -286,7 +301,8 @@ button {
 .about-panel {
   position: absolute;
   top: 18px;
-  left: 18px;
+  right: 18px;
+  left: auto;
   z-index: 5;
   width: min(294px, calc(100vw - 36px));
   padding: 16px;
@@ -322,6 +338,7 @@ button {
   .studio.is-toolbar-hidden .toolbar-toggle {
     top: 10px;
     right: 10px;
+    left: auto;
   }
 
   .about-panel {
@@ -329,6 +346,13 @@ button {
     right: 10px;
     left: 10px;
     width: auto;
+    max-height: calc(100dvh - 62px);
+    overflow-y: auto;
+  }
+
+  .studio.is-about-open .toolbar,
+  .studio.is-about-open .toolbar-toggle {
+    display: none;
   }
 }
 
@@ -347,12 +371,14 @@ button {
 .studio.is-touch-play.is-toolbar-hidden .toolbar-toggle {
   top: max(10px, env(safe-area-inset-top, 0px));
   right: max(10px, env(safe-area-inset-right, 0px));
+  left: auto;
   width: 44px;
   height: 44px;
 }
 
 .studio.is-touch-play .play-hud {
   top: max(10px, env(safe-area-inset-top, 0px));
+  right: auto;
   bottom: auto;
   left: max(10px, env(safe-area-inset-left, 0px));
   width: min(310px, calc(100vw - 68px));

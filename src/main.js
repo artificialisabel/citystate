@@ -16,8 +16,8 @@ app.innerHTML = `
     <div class="viewport">
       <canvas id="scene" tabindex="0" aria-label="Procedural 3D city"></canvas>
       <canvas id="textureLab" class="texture-lab" aria-label="Procedural facade texture laboratory" hidden></canvas>
-      <button id="toggleToolbar" class="toolbar-toggle gc-panel gc-pill" type="button" aria-label="minimise controls" aria-controls="controlToolbar" aria-expanded="true">-</button>
-      <div id="playHud" class="play-hud gc-panel" hidden>
+      <button id="toggleToolbar" class="toolbar-toggle gc-panel gc-dense gc-pill" type="button" aria-label="minimise controls" aria-controls="controlToolbar" aria-expanded="true">-</button>
+      <div id="playHud" class="play-hud gc-panel gc-dense" hidden>
         <button id="avatarHandle" class="avatar-handle" type="button" aria-label="drag to place avatar; activate to reset at the city entrance"></button>
         <div>
           <strong class="gc-panel-title">play mode</strong>
@@ -32,11 +32,11 @@ app.innerHTML = `
         <div id="mobileJoystick" class="mobile-joystick" role="group" tabindex="0" aria-label="movement joystick; drag to move or use arrow keys">
           <div id="mobileJoystickKnob" class="mobile-joystick-knob" aria-hidden="true"></div>
         </div>
-        <button id="mobileJumpButton" class="mobile-jump-button gc-panel gc-pill" type="button">jump</button>
+        <button id="mobileJumpButton" class="mobile-jump-button gc-panel gc-dense gc-pill" type="button">jump</button>
       </div>
     </div>
 
-    <aside id="controlToolbar" class="toolbar gc-panel gc-scroll" aria-label="City controls">
+    <aside id="controlToolbar" class="toolbar gc-panel gc-dense gc-scroll" aria-label="City controls">
       <header class="toolbar-title gc-panel-head">
         <div>
           <span class="gc-panel-title">citystate</span>
@@ -137,7 +137,7 @@ app.innerHTML = `
       </details>
     </aside>
 
-    <aside id="aboutPanel" class="about-panel gc-panel" role="dialog" aria-modal="false" aria-label="about citystate" hidden>
+    <aside id="aboutPanel" class="about-panel gc-panel gc-dense" role="dialog" aria-modal="false" aria-label="about citystate" hidden>
       <header class="about-header gc-panel-head">
         <span class="gc-panel-title">citystate</span>
         <button id="aboutClose" class="gc-chip" type="button" aria-label="close about">x</button>
@@ -493,6 +493,16 @@ const PALETTE_WHEEL_SIZE = 190;
 const PALETTE_LIGHTNESS_ENABLED = false;
 let selectedPaletteIndex = 0;
 let paletteWheelDiscCache = null;
+let paletteWheelDiscCacheSize = 0;
+
+function paletteWheelMetrics() {
+  const requestedRatio = Math.min(Math.max(window.devicePixelRatio || 1, 1), 2);
+  const backingSize = Math.round(PALETTE_WHEEL_SIZE * requestedRatio);
+  return {
+    backingSize,
+    pixelRatio: backingSize / PALETTE_WHEEL_SIZE,
+  };
+}
 
 const presets = {
   day: {
@@ -3752,6 +3762,7 @@ function refreshControlsForPath(path, sourceControl = null) {
 }
 
 function renderPaletteEditor() {
+  const { backingSize } = paletteWheelMetrics();
   const rows = colorControls
     .map(
       ([label, path], index) => `
@@ -3769,8 +3780,8 @@ function renderPaletteEditor() {
     <div class="palette-wheel-wrap">
       <canvas
         id="paletteWheel"
-        width="${PALETTE_WHEEL_SIZE}"
-        height="${PALETTE_WHEEL_SIZE}"
+        width="${backingSize}"
+        height="${backingSize}"
         role="slider"
         tabindex="0"
         aria-label="selected palette colour hue; use left and right for hue, up and down for saturation"
@@ -3790,9 +3801,8 @@ function renderPaletteEditor() {
   `;
 }
 
-function paletteWheelDisc() {
-  if (paletteWheelDiscCache) return paletteWheelDiscCache;
-  const size = PALETTE_WHEEL_SIZE;
+function paletteWheelDisc(size) {
+  if (paletteWheelDiscCache && paletteWheelDiscCacheSize === size) return paletteWheelDiscCache;
   const disc = document.createElement("canvas");
   disc.width = size;
   disc.height = size;
@@ -3807,7 +3817,8 @@ function paletteWheelDisc() {
       const dy = y - cy;
       const dist = Math.hypot(dx, dy);
       const i = (y * size + x) * 4;
-      if (dist > radius) {
+      const edgeCoverage = clamp(radius + 0.5 - dist, 0, 1);
+      if (edgeCoverage <= 0) {
         image.data[i + 3] = 0;
         continue;
       }
@@ -3817,24 +3828,29 @@ function paletteWheelDisc() {
       image.data[i] = rgb[0] * 255;
       image.data[i + 1] = rgb[1] * 255;
       image.data[i + 2] = rgb[2] * 255;
-      image.data[i + 3] = 255;
+      image.data[i + 3] = Math.round(edgeCoverage * 255);
     }
   }
   ctx.putImageData(image, 0, 0);
   paletteWheelDiscCache = disc;
+  paletteWheelDiscCacheSize = size;
   return disc;
 }
 
 function drawPaletteWheel() {
   const canvas = document.querySelector("#paletteWheel");
   if (!canvas) return;
+  const { backingSize: size, pixelRatio } = paletteWheelMetrics();
+  if (canvas.width !== size || canvas.height !== size) {
+    canvas.width = size;
+    canvas.height = size;
+  }
   const ctx = canvas.getContext("2d");
-  const size = PALETTE_WHEEL_SIZE;
   const cx = size / 2;
   const cy = size / 2;
   const radius = size / 2 - 1;
   ctx.clearRect(0, 0, size, size);
-  ctx.drawImage(paletteWheelDisc(), 0, 0);
+  ctx.drawImage(paletteWheelDisc(size), 0, 0);
   colorControls.forEach(([, path], index) => {
     const hsl = hexToHsl(state[path]);
     const angle = hsl.h * Math.PI * 2;
@@ -3843,10 +3859,16 @@ function drawPaletteWheel() {
     const y = cy + Math.sin(angle) * r;
     const selected = index === selectedPaletteIndex;
     ctx.beginPath();
-    ctx.arc(x, y, selected ? 8 : 6, 0, Math.PI * 2);
+    ctx.arc(
+      x,
+      y,
+      (selected ? 8 : 6) * pixelRatio,
+      0,
+      Math.PI * 2,
+    );
     ctx.fillStyle = state[path];
     ctx.fill();
-    ctx.lineWidth = selected ? 3 : 2;
+    ctx.lineWidth = (selected ? 3 : 2) * pixelRatio;
     ctx.strokeStyle = selected ? "#ffffff" : "rgba(0,0,0,0.6)";
     ctx.stroke();
   });
@@ -3899,12 +3921,12 @@ function setPaletteColorHsl(index, hsl) {
 function bindPaletteWheel() {
   const canvas = document.querySelector("#paletteWheel");
   if (!canvas) return;
-  const size = PALETTE_WHEEL_SIZE;
-  const cx = size / 2;
-  const cy = size / 2;
-  const radius = size / 2 - 1;
 
   const pickFromEvent = (event) => {
+    const size = canvas.width;
+    const cx = size / 2;
+    const cy = size / 2;
+    const radius = size / 2 - 1;
     const rect = canvas.getBoundingClientRect();
     const px = ((event.clientX - rect.left) / rect.width) * size - cx;
     const py = ((event.clientY - rect.top) / rect.height) * size - cy;
@@ -3914,6 +3936,10 @@ function bindPaletteWheel() {
   };
 
   const selectNearest = (event) => {
+    const size = canvas.width;
+    const cx = size / 2;
+    const cy = size / 2;
+    const radius = size / 2 - 1;
     const rect = canvas.getBoundingClientRect();
     const px = ((event.clientX - rect.left) / rect.width) * size;
     const py = ((event.clientY - rect.top) / rect.height) * size;
@@ -4173,6 +4199,7 @@ document.querySelector("#toggleToolbar").addEventListener("click", () => {
 
 function setAboutOpen(open, { restoreFocus = false } = {}) {
   aboutPanel.hidden = !open;
+  studio.classList.toggle("is-about-open", open);
   aboutToggle.setAttribute("aria-expanded", String(open));
   if (open) document.querySelector("#aboutClose")?.focus();
   else if (restoreFocus) aboutToggle.focus();
@@ -4409,7 +4436,14 @@ document.addEventListener("visibilitychange", () => {
   if (document.hidden) resetTransientInput();
 });
 
-window.addEventListener("resize", updateTouchPlayLayout, { passive: true });
+window.addEventListener(
+  "resize",
+  () => {
+    updateTouchPlayLayout();
+    drawPaletteWheel();
+  },
+  { passive: true },
+);
 coarsePointerMedia.addEventListener("change", updateTouchPlayLayout);
 reducedMotionMedia.addEventListener("change", () => {
   resetAmbientCameraActivity();
