@@ -5,6 +5,8 @@ Nothing is modelled by hand and nothing is loaded from disk: every building,
 window, cloud, tree and bird is generated from a seed at runtime with
 Three.js, then pushed through a shader-based painterly post stack.
 
+**Live demo:** [citystate.artificialisabel.com](https://citystate.artificialisabel.com)
+
 It is a toy and a control panel. The toolbar exposes the whole generator —
 palette, layout, building shape, windows, atmosphere, camera, post — so you can
 pull a skyline apart and put it back together.
